@@ -1,11 +1,5 @@
 name: Render documents and upload
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+on: [push]
 jobs:
   render_document:
     runs-on: ubuntu-latest
@@ -15,8 +9,8 @@ jobs:
       - name: Render document
         uses: lc5415/rmarkdown-action@v1
         with:
-          input_file: NetElectricityConsumption.Rmd
-	         output_format: github_document
+          input_file: README.Rmd
+          output_format: github_document
       - name: Commit files
         run: |
           git config --local core.autocrlf false
