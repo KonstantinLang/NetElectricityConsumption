@@ -13,6 +13,7 @@ by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on `r Sys.time
 # load packages
 library(conflicted)
 library(dplyr)
+library(forcats)
 library(ggplot2)
 library(knitr)
 library(readxl)
@@ -101,7 +102,11 @@ df_all <-
   full_join(x = df_ps, y = df_em_grid, by = join_by(dt)) %>% 
   pivot_longer(cols = c(prod, avgu), names_to = "cat", values_to = "kwh") %>% 
   mutate(
-    cat = factor(cat, levels = c("avgu", "prod"), labels = c("average net usage", "produced"))
+    cat = factor(
+      cat,
+      levels = c("prod", "avgu"),
+      labels = c("produced", "average net usage")
+    )
   ) %>% 
   filter(!is.na(kwh))
 ```
@@ -111,16 +116,24 @@ df_all <-
 ```{r viz}
 df_all %>% 
   ggplot(mapping = aes(x = dt, y = kwh, group = cat, fill = cat)) + 
+  geom_col() + 
+  geom_text(
+    aes(label = sprintf(fmt = "%.1f", kwh)),
+    position = position_stack(vjust = 0.5),
+    size = 3, color = "white", angle = 90
+  ) +
   geom_hline(yintercept = 2000/365) + 
   annotate(
     geom = "text",
-    x = max(df_all$dt), y = 2000/365, label = "average yearly usage",
+    x = max(df_all$dt), y = 2000/365, label = "daily average",
     hjust = 1.1, vjust = -.2
   ) + 
-  geom_col(position = position_dodge(preserve = "single")) + 
   scale_y_continuous(
-    sec.axis = dup_axis(name = NULL, breaks = round(2000/365, 2))
+    sec.axis = dup_axis(
+      name = NULL, breaks = round(2000/365, 2), label = "2000/365"
+    )
   ) + 
+  scale_fill_manual(values = c("#00BFC4", "#F8766D")) +
   labs(x = NULL, y = "kWh", fill = NULL) + 
   theme_minimal() + 
   theme(legend.position = "bottom")
