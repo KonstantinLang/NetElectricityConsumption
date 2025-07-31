@@ -1,17 +1,15 @@
-Net Electricity Consumption
-================
+---
+output: github_document
+title: "Net Electricity Consumption"
+---
 
-Visualization of electricity production by balcony power station and net
-electricity usage, measured by electricity meter.
+Visualization of electricity production by balcony power station and net electricity usage, measured by electricity meter.
 
 <div>
-
-by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on
-2025-07-31 16:01:35.23406
-
+by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on `r Sys.time()`
 </div>
 
-``` r
+```{r init}
 # load packages
 library(conflicted)
 library(dplyr)
@@ -27,12 +25,15 @@ library(tidyr)
 conflicts_prefer(dplyr::filter(), dplyr::lag(), .quiet = TRUE)
 
 # set knitr options
-opts_chunk$set(fig.path = file.path("img", .Platform$file.sep))
+opts_chunk$set(
+  echo = FALSE,
+  fig.path = file.path("img", .Platform$file.sep)
+)
 ```
 
 ## Data prep
 
-``` r
+```{r file-names}
 # electricity meter
 fnam_em <- file.path("data", "electricity_meter.csv")
 
@@ -42,13 +43,13 @@ fnam_ps <- list.files("data", pattern = "power-station", full.names = TRUE)
 
 Import electricity net consumption from file
 
-data/electricity_meter.csv.
+`r fnam_em`.
 
 Import electricity production from files
 
-- data/20250731_power-station.xlsx
+`r paste("* ", fnam_ps, collapse = "\n")`
 
-``` r
+```{r import}
 # electricity measure
 df_em <- read.csv(fnam_em) %>% 
   as_tibble() %>% 
@@ -80,10 +81,10 @@ df_ps <-
 
 **Process** data
 
-- create data with average electricity usage by date
-- combine both data, electricity net usage and electricity production
+*  create data with average electricity usage by date
+*  combine both data, electricity net usage and electricity production
 
-``` r
+```{r process}
 # get date range
 dt_range <- range(df_em$dt)
 
@@ -107,7 +108,7 @@ df_all <-
 
 ## Evaluation
 
-``` r
+```{r viz}
 df_all %>% 
   ggplot(mapping = aes(x = dt, y = kwh, group = cat, fill = cat)) + 
   geom_hline(yintercept = 2000/365) + 
@@ -125,4 +126,3 @@ df_all %>%
   theme(legend.position = "bottom")
 ```
 
-![](img//viz-1.png)<!-- -->
