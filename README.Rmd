@@ -9,7 +9,7 @@ Visualization of electricity production by balcony power station and net electri
 by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on `r Sys.time()`
 </div>
 
-```{r init}
+```{r init, echo = FALSE}
 # load packages
 library(conflicted)
 library(dplyr)

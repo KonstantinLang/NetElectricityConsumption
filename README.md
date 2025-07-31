@@ -7,31 +7,9 @@ electricity usage, measured by electricity meter.
 <div>
 
 by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on
-2025-07-31 21:50:21.230892
+2025-07-31 21:55:21.934159
 
 </div>
-
-``` r
-# load packages
-library(conflicted)
-library(dplyr)
-library(ggplot2)
-library(knitr)
-library(readxl)
-library(purrr)
-library(tibble)
-library(tidyr)
-
-# solve package conflicts
-# conflict_scout()
-conflicts_prefer(dplyr::filter(), dplyr::lag(), .quiet = TRUE)
-
-# set knitr options
-opts_chunk$set(
-  echo = FALSE,
-  fig.path = file.path("img", .Platform$file.sep)
-)
-```
 
 ## Data prep
 
