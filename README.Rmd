@@ -71,9 +71,10 @@ df_ps <-
     .f = \(f) {
       #-- f <- fnam_ps[1]
       read_xlsx(f) %>% 
+        select(dt = 2, prod = 4) %>% 
         mutate(
-          dt   = as.Date(`Updated Time`, format = "%Y/%m/%d"),
-          prod = as.double(`Production-Today(kWh)`)
+          dt   = as.Date(dt, format = "%Y/%m/%d"),
+          prod = as.double(prod)
         ) %>% 
         select(dt, prod)
     }
@@ -122,15 +123,13 @@ df_all %>%
     position = position_stack(vjust = 0.5),
     size = 3, color = "white", angle = 90
   ) +
-  geom_hline(yintercept = 2000/365) + 
-  annotate(
-    geom = "text",
-    x = max(df_all$dt), y = 2000/365, label = "daily average",
-    hjust = 1.1, vjust = -.2
-  ) + 
+  geom_hline(yintercept = c(0, 2000/365)) + 
+  scale_x_date(
+    date_breaks = "1 week", date_labels = "%d %b", minor_breaks = NULL
+  ) +
   scale_y_continuous(
     sec.axis = dup_axis(
-      name = NULL, breaks = round(2000/365, 2), label = "2000/365"
+      name = NULL, breaks = round(2000/365, 2), label = "daily\naverage\n2024"
     )
   ) + 
   scale_fill_manual(values = c("#00BFC4", "#F8766D")) +
