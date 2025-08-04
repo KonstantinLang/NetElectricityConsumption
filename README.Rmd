@@ -101,14 +101,14 @@ df_em_grid <-
 
 df_all <- 
   full_join(x = df_ps, y = df_em_grid, by = join_by(dt)) %>% 
-  pivot_longer(cols = c(prod, avgu), names_to = "cat", values_to = "kwh") %>% 
+  pivot_longer(cols = c(prod, avgu), names_to = "cat", values_to = "kwh") %>%
   mutate(
     cat = factor(
       cat,
       levels = c("prod", "avgu"),
       labels = c("produced", "average net usage")
     )
-  ) %>% 
+  ) %>%
   filter(!is.na(kwh))
 ```
 
@@ -116,24 +116,26 @@ df_all <-
 
 ```{r viz}
 df_all %>% 
+  mutate(kwh = if_else(as.integer(cat) == 2, -1 * kwh, kwh)) %>% 
   ggplot(mapping = aes(x = dt, y = kwh, group = cat, fill = cat)) + 
   geom_col() + 
   geom_text(
-    aes(label = sprintf(fmt = "%.1f", kwh)),
+    aes(label = sprintf(fmt = "%.1f", abs(kwh))),
     position = position_stack(vjust = 0.5),
     size = 3, color = "white", angle = 90
   ) +
-  geom_hline(yintercept = c(0, 2000/365)) + 
   scale_x_date(
     date_breaks = "1 week", date_labels = "%d %b", minor_breaks = NULL
   ) +
   scale_y_continuous(
-    sec.axis = dup_axis(
-      name = NULL, breaks = round(2000/365, 2), label = "daily\naverage\n2024"
-    )
+    breaks = -9:9,
+    labels = \(x) if_else(x < 0, "", as.character(x)),
+    minor_breaks = NULL,
+    sec.axis = dup_axis(name = "net kWh usage", breaks = -9:0, labels = 9:0)
   ) + 
   scale_fill_manual(values = c("#00BFC4", "#F8766D")) +
-  labs(x = NULL, y = "kWh", fill = NULL) + 
+  guides(fill = "none") + 
+  labs(x = NULL, y = "kWh produced", fill = NULL) + 
   theme_minimal() + 
   theme(legend.position = "bottom")
 ```
