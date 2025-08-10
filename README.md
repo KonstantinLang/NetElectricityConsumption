@@ -7,7 +7,7 @@ electricity usage, measured by electricity meter.
 <div>
 
 by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on
-2025-08-04 12:04:05.435782
+2025-08-10 22:23:14.354334
 
 </div>
 
@@ -17,10 +17,15 @@ Import electricity net consumption from file
 
 data/electricity_meter.csv.
 
-Import electricity production from files
+Import electricity production on a daily level from files
 
-- data/202507_power-station.xlsx
-- data/202508_power-station.xlsx
+- data/ps_daily/2025-07-08_2025-07-31.xlsx
+- data/ps_daily/2025-08-01_2025-08-08.xlsx
+
+Import electricity production on a detailed level from files
+
+- data/ps_detail/2025-07-02_2025-07-31.xlsx
+- data/ps_detail/2025-08-01_2025-08-08.xlsx
 
 **Process** data
 
@@ -29,4 +34,10 @@ Import electricity production from files
 
 ## Evaluation
 
-![](img//viz-1.png)<!-- -->
+### Electricity meter
+
+![](img/unnamed-chunk-2-1.png)<!-- -->
+
+### Daily electricity production
+
+![](img/viz-1.png)<!-- -->

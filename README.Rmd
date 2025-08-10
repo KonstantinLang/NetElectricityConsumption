@@ -18,6 +18,7 @@ library(ggplot2)
 library(knitr)
 library(readxl)
 library(purrr)
+library(stringr)
 library(tibble)
 library(tidyr)
 
@@ -39,16 +40,21 @@ opts_chunk$set(
 fnam_em <- file.path("data", "electricity_meter.csv")
 
 # power station
-fnam_ps <- list.files("data", pattern = "power-station", full.names = TRUE)
+fnam_ps_daily <- list.files(file.path("data", "ps_daily"), full.names = TRUE)
+fnam_ps_detail <- list.files(file.path("data", "ps_detail"), full.names = TRUE)
 ```
 
 Import electricity net consumption from file
 
 `r fnam_em`.
 
-Import electricity production from files
+Import electricity production on a daily level from files
 
-`r paste("* ", fnam_ps, collapse = "\n")`
+`r paste("* ", fnam_ps_daily, collapse = "\n")`
+
+Import electricity production on a detailed level from files
+
+`r paste("* ", fnam_ps_detail, collapse = "\n")`
 
 ```{r import}
 # electricity measure
@@ -61,15 +67,14 @@ df_em <- read.csv(fnam_em) %>%
     tdif  = aux - lag(aux),
     usage = kwh - lag(kwh),
     avgu  = usage / tdif
-  ) %>% 
-  select(dt, avgu)
+  )
 
 # power station
-df_ps <- 
+df_ps_daily <- 
   map_df(
-    fnam_ps,
+    fnam_ps_daily,
     .f = \(f) {
-      #-- f <- fnam_ps[1]
+      #-- f <- fnam_ps_daily[1]
       read_xlsx(f) %>% 
         select(dt = 2, prod = 4) %>% 
         mutate(
@@ -78,8 +83,47 @@ df_ps <-
         ) %>% 
         select(dt, prod)
     }
+  ) %>% 
+  mutate(month = factor(months(dt), levels = month.name))
+
+df_ps_detail <- 
+  map_df(
+    fnam_ps_detail,
+    .f = \(f) {
+      #-- f <- fnam_ps_detail[1]
+      read_xlsx(f) %>% 
+        select(dttm = 2, prod = 4) %>% 
+        mutate(
+          dt   = word(dttm) %>% as.Date(format = "%Y/%m/%d"),
+          tm   = word(dttm, start = 2) %>% 
+            as.difftime(format = "%H:%M", unit = "hours"),
+          dttm = as.POSIXct(dttm),
+          prod = as.double(prod)
+        ) %>% 
+        select(dttm, dt, tm, prod)
+    }
   )
 ```
+
+```{r, eval = FALSE}
+df_ps_detail %>% 
+  summarize(
+    nrec = n(),
+    nvld = sum(!is.na(prod)),
+    nmis = sum(is.na(prod)),
+    qrt0 = quantile(prod, prob = 0, na.rm = TRUE),
+    qrt1 = quantile(prod, prob = .25, na.rm = TRUE),
+    qrt2 = quantile(prod, prob = .5, na.rm = TRUE),
+    qrt3 = quantile(prod, prob = .75, na.rm = TRUE),
+    qrt4 = quantile(prod, prob = 1, na.rm = TRUE),
+    .by = tm
+  ) %>% 
+  arrange(tm) %>% 
+  ggplot(mapping = aes(x = tm, y = qrt4)) + 
+  geom_line() + 
+  theme_minimal()
+```
+
 
 **Process** data
 
@@ -98,43 +142,40 @@ df_em_grid <-
     by = join_by(dt)
   ) %>% 
   fill(avgu, .direction = "up")
-
-df_all <- 
-  full_join(x = df_ps, y = df_em_grid, by = join_by(dt)) %>% 
-  pivot_longer(cols = c(prod, avgu), names_to = "cat", values_to = "kwh") %>%
-  mutate(
-    cat = factor(
-      cat,
-      levels = c("prod", "avgu"),
-      labels = c("produced", "average net usage")
-    )
-  ) %>%
-  filter(!is.na(kwh))
 ```
 
 ## Evaluation
 
+### Electricity meter
+
+```{r}
+df_em_grid %>% 
+  ggplot(mapping = aes(x = dt, y = avgu)) +
+  geom_hline(yintercept = 0) + 
+  geom_step() + 
+  labs(x = NULL, y = "kWh per day", fill = NULL) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = .5))
+```
+
+
+### Daily electricity production
+
 ```{r viz}
-df_all %>% 
-  mutate(kwh = if_else(as.integer(cat) == 2, -1 * kwh, kwh)) %>% 
-  ggplot(mapping = aes(x = dt, y = kwh, group = cat, fill = cat)) + 
+df_ps_daily %>% 
+  ggplot(mapping = aes(x = dt, y = prod)) +
+  facet_grid(cols = vars(month), scales = "free_x", space = "free_x") + 
+  geom_hline(yintercept = 2000/365) + 
   geom_col() + 
   geom_text(
-    aes(label = sprintf(fmt = "%.1f", abs(kwh))),
+    aes(label = sprintf(fmt = "%.1f", prod)),
     position = position_stack(vjust = 0.5),
     size = 3, color = "white", angle = 90
   ) +
   scale_x_date(
     date_breaks = "1 week", date_labels = "%d %b", minor_breaks = NULL
   ) +
-  scale_y_continuous(
-    breaks = -9:9,
-    labels = \(x) if_else(x < 0, "", as.character(x)),
-    minor_breaks = NULL,
-    sec.axis = dup_axis(name = "net kWh usage", breaks = -9:0, labels = 9:0)
-  ) + 
-  scale_fill_manual(values = c("#00BFC4", "#F8766D")) +
-  guides(fill = "none") + 
   labs(x = NULL, y = "kWh produced", fill = NULL) + 
   theme_minimal() + 
   theme(legend.position = "bottom")
