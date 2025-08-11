@@ -7,7 +7,7 @@ electricity usage, measured by electricity meter.
 <div>
 
 by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on
-2025-08-10 22:23:14.354334
+2025-08-11 21:51:36.239524
 
 </div>
 
@@ -35,6 +35,10 @@ Import electricity production on a detailed level from files
 ## Evaluation
 
 ### Electricity meter
+
+![](img/unnamed-chunk-1-1.png)<!-- -->
+
+### Detailed electricity production
 
 ![](img/unnamed-chunk-2-1.png)<!-- -->
 

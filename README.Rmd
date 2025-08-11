@@ -105,26 +105,6 @@ df_ps_detail <-
   )
 ```
 
-```{r, eval = FALSE}
-df_ps_detail %>% 
-  summarize(
-    nrec = n(),
-    nvld = sum(!is.na(prod)),
-    nmis = sum(is.na(prod)),
-    qrt0 = quantile(prod, prob = 0, na.rm = TRUE),
-    qrt1 = quantile(prod, prob = .25, na.rm = TRUE),
-    qrt2 = quantile(prod, prob = .5, na.rm = TRUE),
-    qrt3 = quantile(prod, prob = .75, na.rm = TRUE),
-    qrt4 = quantile(prod, prob = 1, na.rm = TRUE),
-    .by = tm
-  ) %>% 
-  arrange(tm) %>% 
-  ggplot(mapping = aes(x = tm, y = qrt4)) + 
-  geom_line() + 
-  theme_minimal()
-```
-
-
 **Process** data
 
 *  create data with average electricity usage by date
@@ -159,14 +139,58 @@ df_em_grid %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = .5))
 ```
 
+### Detailed electricity production
+
+```{r}
+df_ps_detail_max <- 
+  df_ps_detail %>% 
+  summarize(
+    nrec = n(),
+    nvld = sum(!is.na(prod)),
+    nmis = sum(is.na(prod)),
+    qrt0 = quantile(prod, prob = 0, na.rm = TRUE),
+    qrt1 = quantile(prod, prob = .25, na.rm = TRUE),
+    qrt2 = quantile(prod, prob = .5, na.rm = TRUE),
+    qrt3 = quantile(prod, prob = .75, na.rm = TRUE),
+    qrt4 = quantile(prod, prob = 1, na.rm = TRUE),
+    .by = tm
+  ) %>% 
+  arrange(tm)
+
+rng_x   <- range(df_ps_detail_max$tm)
+max_auc <- approxfun(df_ps_detail_max$tm, df_ps_detail_max$qrt4) %>% 
+  integrate(lower = rng_x[1], upper = rng_x[2])
+
+df_ps_detail_max %>%
+  ggplot(mapping = aes(x = tm, y = qrt4)) + 
+  geom_hline(yintercept = 0, color = gray(.5)) + 
+  geom_area(alpha = .3, color = "black", linewidth = 1) + 
+  scale_x_continuous(breaks = 0:24, minor_breaks = NULL) + 
+  annotation_custom(
+    grob = grid::textGrob(
+      label = sprintf(fmt = "%.2f kWh", max_auc$value/1000),
+      x = 0.5, y = 0.5, just = "center", gp = grid::gpar(cex = 3, alpha = .5)
+    )
+  ) +
+  labs(
+    title = "Maximal production of balcony power station",
+    x = "Hour",
+    y = "Watt"
+  ) + 
+  theme_minimal()
+```
 
 ### Daily electricity production
 
 ```{r viz}
+avg_usage <- df_em %>% 
+  filter(dt %in% c(as.Date(c("2023-12-31", "2024-12-31")))) %>% pull(kwh) %>%
+  diff() %>% {./365}
+
 df_ps_daily %>% 
   ggplot(mapping = aes(x = dt, y = prod)) +
   facet_grid(cols = vars(month), scales = "free_x", space = "free_x") + 
-  geom_hline(yintercept = 2000/365) + 
+  geom_hline(yintercept = avg_usage) + 
   geom_col() + 
   geom_text(
     aes(label = sprintf(fmt = "%.1f", prod)),
@@ -176,8 +200,13 @@ df_ps_daily %>%
   scale_x_date(
     date_breaks = "1 week", date_labels = "%d %b", minor_breaks = NULL
   ) +
+  scale_y_continuous(
+    breaks = 0:9, minor_breaks = NULL,
+    sec.axis = dup_axis(breaks = round(avg_usage, digits = 2), name = NULL)
+  ) + 
   labs(x = NULL, y = "kWh produced", fill = NULL) + 
   theme_minimal() + 
   theme(legend.position = "bottom")
 ```
+
 
