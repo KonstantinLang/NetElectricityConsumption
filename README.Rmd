@@ -3,10 +3,10 @@ output: github_document
 title: "Net Electricity Consumption"
 ---
 
-Visualization of electricity production by balcony power station and net electricity usage, measured by electricity meter.
+Visualization of electricity produced by balcony power station and net electricity usage measured by electricity meter.
 
 <div>
-by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on `r Sys.time()`
+by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on `r Sys.Date()`
 </div>
 
 ```{r init, echo = FALSE}
@@ -27,162 +27,42 @@ library(tidyr)
 conflicts_prefer(dplyr::filter(), dplyr::lag(), .quiet = TRUE)
 
 # set knitr options
-opts_chunk$set(
-  echo = FALSE,
-  fig.path = file.path("img", .Platform$file.sep)
-)
+opts_chunk$set(echo = FALSE, fig.path = file.path("img", ""))
 ```
 
-## Data prep
-
-```{r file-names}
-# electricity meter
-fnam_em <- file.path("data", "electricity_meter.csv")
-
-# power station
-fnam_ps_daily <- list.files(file.path("data", "ps_daily"), full.names = TRUE)
-fnam_ps_detail <- list.files(file.path("data", "ps_detail"), full.names = TRUE)
+```{r data-prep}
+source(file.path("scripts", "data_prep.R"))
 ```
 
-Import electricity net consumption from file
+<!-- Start of analysis -------------------------------------------------------->
 
-`r fnam_em`.
-
-Import electricity production on a daily level from files
-
-`r paste("* ", fnam_ps_daily, collapse = "\n")`
-
-Import electricity production on a detailed level from files
-
-`r paste("* ", fnam_ps_detail, collapse = "\n")`
-
-```{r import}
-# electricity measure
-df_em <- read.csv(fnam_em) %>% 
-  as_tibble() %>% 
-  mutate(
-    dt    = as.Date(dt, format = "%Y-%m-%d"),
-    dttm  = as.POSIXct(paste(dt, tm), format = "%Y-%m-%d %H:%M"),
-    aux   = as.double(dttm) / (3600 * 24),
-    tdif  = aux - lag(aux),
-    usage = kwh - lag(kwh),
-    avgu  = usage / tdif
-  )
-
-# power station
-df_ps_daily <- 
-  map_df(
-    fnam_ps_daily,
-    .f = \(f) {
-      #-- f <- fnam_ps_daily[1]
-      read_xlsx(f) %>% 
-        select(dt = 2, prod = 4) %>% 
-        mutate(
-          dt   = as.Date(dt, format = "%Y/%m/%d"),
-          prod = as.double(prod)
-        ) %>% 
-        select(dt, prod)
-    }
-  ) %>% 
-  mutate(month = factor(months(dt), levels = month.name))
-
-df_ps_detail <- 
-  map_df(
-    fnam_ps_detail,
-    .f = \(f) {
-      #-- f <- fnam_ps_detail[1]
-      read_xlsx(f) %>% 
-        select(dttm = 2, prod = 4) %>% 
-        mutate(
-          dt   = word(dttm) %>% as.Date(format = "%Y/%m/%d"),
-          tm   = word(dttm, start = 2) %>% 
-            as.difftime(format = "%H:%M", unit = "hours"),
-          dttm = as.POSIXct(dttm),
-          prod = as.double(prod)
-        ) %>% 
-        select(dttm, dt, tm, prod)
-    }
-  )
-```
-
-**Process** data
-
-*  create data with average electricity usage by date
-*  combine both data, electricity net usage and electricity production
-
-```{r process}
-# get date range
-dt_range <- range(df_em$dt)
-
-# em grid with average net electricity usage
-df_em_grid <- 
-  tibble(dt = seq(dt_range[1], dt_range[2], by = "d")) %>% 
-  left_join(
-    y = df_em %>% select(dt, avgu) %>% filter(!is.na(avgu)),
-    by = join_by(dt)
-  ) %>% 
-  fill(avgu, .direction = "up")
-```
-
-## Evaluation
-
-### Electricity meter
-
-```{r}
-df_em_grid %>% 
+```{r average-net-usage}
+df_em %>% 
   ggplot(mapping = aes(x = dt, y = avgu)) +
-  geom_hline(yintercept = 0) + 
-  geom_step() + 
-  labs(x = NULL, y = "kWh per day", fill = NULL) + 
-  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") + 
+  geom_hline(yintercept = 0, color = gray(.5)) + 
+  geom_vline(
+    xintercept = as.Date(paste0(2023:2026, "-01-01")),
+    color = gray(.5), linetype = "dashed"
+  ) + 
+  geom_vline(xintercept = as.Date("2025-07-07"), color = "red") + 
+  annotate(
+    geom = "text", x = as.Date("2025-07-07"), y = 0,
+    label = "1st day of power station",
+    angle = 90, hjust = -.1, vjust = -.5, color = "red"
+  ) + 
+  geom_point() + 
+  geom_step(direction = "vh") + 
+  labs(
+    x = NULL, y = "kWh", fill = NULL,
+    title = "Daily average net electricity usage"
+  ) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y", minor_breaks = NULL) + 
+  scale_y_continuous(breaks = 0:9, minor_breaks = NULL, expand = expansion(mult = c(0, .05))) + 
   theme_minimal() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = .5))
 ```
 
-### Detailed electricity production
-
-```{r}
-df_ps_detail_max <- 
-  df_ps_detail %>% 
-  summarize(
-    nrec = n(),
-    nvld = sum(!is.na(prod)),
-    nmis = sum(is.na(prod)),
-    qrt0 = quantile(prod, prob = 0, na.rm = TRUE),
-    qrt1 = quantile(prod, prob = .25, na.rm = TRUE),
-    qrt2 = quantile(prod, prob = .5, na.rm = TRUE),
-    qrt3 = quantile(prod, prob = .75, na.rm = TRUE),
-    qrt4 = quantile(prod, prob = 1, na.rm = TRUE),
-    .by = tm
-  ) %>% 
-  arrange(tm)
-
-rng_x   <- range(df_ps_detail_max$tm)
-max_auc <- approxfun(df_ps_detail_max$tm, df_ps_detail_max$qrt4) %>% 
-  integrate(lower = rng_x[1], upper = rng_x[2])
-
-df_ps_detail_max %>%
-  ggplot(mapping = aes(x = tm, y = qrt4)) + 
-  geom_hline(yintercept = 0, color = gray(.5)) + 
-  geom_area(alpha = .3, color = "black", linewidth = 1) + 
-  scale_x_continuous(breaks = 0:24, minor_breaks = NULL) + 
-  annotation_custom(
-    grob = grid::textGrob(
-      label = sprintf(fmt = "%.2f kWh", max_auc$value/1000),
-      x = 0.5, y = 0.5, just = "center", gp = grid::gpar(cex = 3, alpha = .5)
-    )
-  ) +
-  labs(
-    title = "Maximal production of balcony power station",
-    x = "Hour",
-    y = "Watt"
-  ) + 
-  theme_minimal()
-```
-
-### Daily electricity production
-
-```{r viz}
+```{r prod-daily}
 avg_usage <- df_em %>% 
   filter(dt %in% c(as.Date(c("2023-12-31", "2024-12-31")))) %>% pull(kwh) %>%
   diff() %>% {./365}
@@ -202,11 +82,49 @@ df_ps_daily %>%
   ) +
   scale_y_continuous(
     breaks = 0:9, minor_breaks = NULL,
+    expand = expansion(mult = c(0, .05)),
     sec.axis = dup_axis(breaks = round(avg_usage, digits = 2), name = NULL)
   ) + 
-  labs(x = NULL, y = "kWh produced", fill = NULL) + 
+  labs(
+    x = NULL, y = "kWh", fill = NULL,
+    title = "Power station production"
+  ) + 
   theme_minimal() + 
   theme(legend.position = "bottom")
 ```
 
+```{r prod-details}
+auc <- \(x, y) {
+  #-- df <- df_ps_detail_auc$data[[1]]
+  #-- x <- df$tm; y <- df$value
+  n <- length(x)
+  a <- 0.5 * (y[1:(n-1)] + y[2:n]) * (x[2:n] - x[1:(n-1)])
+  sum(as.numeric(a))
+}
 
+df_ps_detail_auc <- 
+  df_ps_detail_sum %>% 
+  nest(data = -name) %>% 
+  mutate(auc = map_dbl(data, .f = ~auc(.x$tm, .x$value))) %>% 
+  select(-data)
+  
+df_ps_detail_sum %>%
+  left_join(y = df_ps_detail_auc, by = join_by(name)) %>% 
+  mutate(aux = paste0(name, ": ", sprintf(fmt = "%.2f kWh", auc/1000)) %>% fct_inorder()) %>% 
+  ggplot(mapping = aes(x = tm, y = value, group = aux, color = aux)) + 
+  geom_hline(yintercept = 0, color = gray(.5)) + 
+  geom_line() + 
+  scale_x_continuous(breaks = 0:24, minor_breaks = NULL) + 
+  scale_y_continuous(expand = expansion(mult = c(0, .05))) + 
+  labs(
+    x = "Hour",
+    y = "Watt",
+    color = NULL,
+    title = "Quartiles of power station production",
+  ) + 
+  theme_minimal()
+```
+
+
+
+<!-- End of analysis ---------------------------------------------------------->

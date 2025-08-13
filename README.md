@@ -1,47 +1,22 @@
 Net Electricity Consumption
 ================
 
-Visualization of electricity production by balcony power station and net
-electricity usage, measured by electricity meter.
+Visualization of electricity produced by balcony power station and net
+electricity usage measured by electricity meter.
 
 <div>
 
 by <a href="mailto:firstname.lastname@outlook.com">Konstantin</a> on
-2025-08-11 21:51:36.239524
+2025-08-13
 
 </div>
 
-## Data prep
+<!-- Start of analysis -------------------------------------------------------->
 
-Import electricity net consumption from file
+![](img/average-net-usage-1.png)<!-- -->
 
-data/electricity_meter.csv.
+![](img/prod-daily-1.png)<!-- -->
 
-Import electricity production on a daily level from files
+![](img/prod-details-1.png)<!-- -->
 
-- data/ps_daily/2025-07-08_2025-07-31.xlsx
-- data/ps_daily/2025-08-01_2025-08-08.xlsx
-
-Import electricity production on a detailed level from files
-
-- data/ps_detail/2025-07-02_2025-07-31.xlsx
-- data/ps_detail/2025-08-01_2025-08-08.xlsx
-
-**Process** data
-
-- create data with average electricity usage by date
-- combine both data, electricity net usage and electricity production
-
-## Evaluation
-
-### Electricity meter
-
-![](img/unnamed-chunk-1-1.png)<!-- -->
-
-### Detailed electricity production
-
-![](img/unnamed-chunk-2-1.png)<!-- -->
-
-### Daily electricity production
-
-![](img/viz-1.png)<!-- -->
+<!-- End of analysis ---------------------------------------------------------->
