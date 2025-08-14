@@ -40,6 +40,7 @@ df_ps_daily <-
         select(dt, prod)
     }
   ) %>% 
+  filter(dt != as.Date("2025-07-07")) %>% 
   mutate(month = factor(months(dt), levels = month.name))
 
 # +++ 5-min data ----
@@ -59,12 +60,23 @@ df_ps_detail <-
         ) %>% 
         select(dttm, dt, tm, prod)
     }
-  )
+  ) %>% 
+  filter(dt != as.Date("2025-07-07"))
 
 # + Process data ----
 
-# ++ calculate summary stats of 5-min data by interval
-df_ps_detail_sum <- 
+# ++ summary stats by day
+df_ps_sum_day <- 
+  df_ps_detail %>% 
+  summarise(
+    CMAX = max(prod, na.rm = TRUE),
+    TMAX = tm[which.max(prod)][1],
+    AUC  = auc(as.numeric(tm), prod),
+    .by = dt
+  )
+
+# ++ summary stats by 5-min interval
+df_ps_sum_minute <- 
   df_ps_detail %>% 
   summarise(
     nrec = n(),

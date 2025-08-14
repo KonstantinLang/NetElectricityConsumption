@@ -27,10 +27,17 @@ library(tidyr)
 conflicts_prefer(dplyr::filter(), dplyr::lag(), .quiet = TRUE)
 
 # set knitr options
-opts_chunk$set(echo = FALSE, fig.path = file.path("img", ""))
+opts_chunk$set(
+  echo = FALSE,
+  fig.path = file.path("img", .Platform$file.sep)
+)
+
+# set default ggplot theme
+theme_set(theme_minimal())
 ```
 
 ```{r data-prep}
+source(file.path("scripts", "f_auc.R"))
 source(file.path("scripts", "data_prep.R"))
 ```
 
@@ -50,7 +57,6 @@ df_em %>%
     label = "1st day of power station",
     angle = 90, hjust = -.1, vjust = -.5, color = "red"
   ) + 
-  geom_point() + 
   geom_step(direction = "vh") + 
   labs(
     x = NULL, y = "kWh", fill = NULL,
@@ -58,7 +64,6 @@ df_em %>%
   ) + 
   scale_x_date(date_breaks = "1 month", date_labels = "%b %Y", minor_breaks = NULL) + 
   scale_y_continuous(breaks = 0:9, minor_breaks = NULL, expand = expansion(mult = c(0, .05))) + 
-  theme_minimal() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 0, vjust = .5))
 ```
 
@@ -70,7 +75,15 @@ avg_usage <- df_em %>%
 df_ps_daily %>% 
   ggplot(mapping = aes(x = dt, y = prod)) +
   facet_grid(cols = vars(month), scales = "free_x", space = "free_x") + 
-  geom_hline(yintercept = avg_usage) + 
+  geom_hline(yintercept = avg_usage, col = "red") + 
+  geom_text(
+    mapping = aes(
+      x = as.Date("2025-07-08"),
+      y = avg_usage,
+      label = "Average electricity usage 2024"
+    ),
+    data = ~slice(.x, 1), hjust = -.1, vjust = -.5, color = "red"
+  ) +
   geom_col() + 
   geom_text(
     aes(label = sprintf(fmt = "%.1f", prod)),
@@ -89,41 +102,51 @@ df_ps_daily %>%
     x = NULL, y = "kWh", fill = NULL,
     title = "Power station production"
   ) + 
-  theme_minimal() + 
   theme(legend.position = "bottom")
 ```
 
-```{r prod-details}
-auc <- \(x, y) {
-  #-- df <- df_ps_detail_auc$data[[1]]
-  #-- x <- df$tm; y <- df$value
-  n <- length(x)
-  a <- 0.5 * (y[1:(n-1)] + y[2:n]) * (x[2:n] - x[1:(n-1)])
-  sum(as.numeric(a))
-}
-
-df_ps_detail_auc <- 
-  df_ps_detail_sum %>% 
-  nest(data = -name) %>% 
-  mutate(auc = map_dbl(data, .f = ~auc(.x$tm, .x$value))) %>% 
-  select(-data)
-  
-df_ps_detail_sum %>%
-  left_join(y = df_ps_detail_auc, by = join_by(name)) %>% 
-  mutate(aux = paste0(name, ": ", sprintf(fmt = "%.2f kWh", auc/1000)) %>% fct_inorder()) %>% 
-  ggplot(mapping = aes(x = tm, y = value, group = aux, color = aux)) + 
-  geom_hline(yintercept = 0, color = gray(.5)) + 
-  geom_line() + 
-  scale_x_continuous(breaks = 0:24, minor_breaks = NULL) + 
-  scale_y_continuous(expand = expansion(mult = c(0, .05))) + 
+```{r, fig.height = 2}
+df_ps_daily %>% 
+  ggplot(mapping = aes(x = prod, y = 0)) + 
+  facet_wrap(~month) + 
+  geom_boxplot(fill = "#00000000", coef = NULL) + 
+  geom_jitter(width = 0, height = .2, alpha = .4) + 
+  scale_x_continuous(breaks = 0:9, minor_breaks = NULL, limits = c(0, NA)) + 
+  scale_y_continuous(breaks = NULL) + 
   labs(
-    x = "Hour",
-    y = "Watt",
-    color = NULL,
-    title = "Quartiles of power station production",
-  ) + 
-  theme_minimal()
+    y = NULL,
+    x = "kWh",
+    title = "Boxplots of daily electricity production"
+  ) +
+  theme(axis.text.y = element_blank())
+  
 ```
+
+<!-- ```{r prod-details} -->
+
+
+<!-- df_ps_detail_auc <-  -->
+<!--   df_ps_detail_sum %>%  -->
+<!--   nest(data = -name) %>%  -->
+<!--   mutate(auc = map_dbl(data, .f = ~auc(.x$tm, .x$value))) %>%  -->
+<!--   select(-data) -->
+
+<!-- df_ps_detail_sum %>% -->
+<!--   left_join(y = df_ps_detail_auc, by = join_by(name)) %>%  -->
+<!--   mutate(aux = paste0(name, ": ", sprintf(fmt = "%.2f kWh", auc/1000)) %>% fct_inorder()) %>%  -->
+<!--   ggplot(mapping = aes(x = tm, y = value, group = aux, color = aux)) +  -->
+<!--   geom_hline(yintercept = 0, color = gray(.5)) +  -->
+<!--   geom_line() +  -->
+<!--   scale_x_continuous(breaks = 0:24, minor_breaks = NULL) +  -->
+<!--   scale_y_continuous(expand = expansion(mult = c(0, .05))) +  -->
+<!--   labs( -->
+<!--     x = "Hour", -->
+<!--     y = "Watt", -->
+<!--     color = NULL, -->
+<!--     title = "Quartiles of power station production", -->
+<!--   ) +  -->
+<!--   theme_minimal() -->
+<!-- ``` -->
 
 
 
